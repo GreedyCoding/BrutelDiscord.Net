@@ -1,1 +1,1 @@
-# BrutelDiscordWrapper.Net
+# BrutelDiscord.Net
