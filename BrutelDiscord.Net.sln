@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.28803.156
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrutelDiscord.Net", "BrutelDiscord.Net\BrutelDiscord.Net.csproj", "{8798EAEB-1B2C-4F0B-8834-16C38BDE4DFC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BrutelDiscord", "BrutelDiscord.Net\BrutelDiscord.csproj", "{8798EAEB-1B2C-4F0B-8834-16C38BDE4DFC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
