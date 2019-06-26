@@ -5,7 +5,7 @@ using System.Text;
 
 namespace BrutelDiscord.Abstractions.Gateway
 {
-    class HelloResume
+    class GatewayHelloResume
     {
         [JsonProperty("heartbeat_interval")]
         public int HeartbeatInterval { get; set; }

@@ -6,7 +6,7 @@ using System.Text;
 
 namespace BrutelDiscord.Abstractions.Gateway
 {
-    class Payload
+    class GatewayPayload
     {
         [JsonProperty("op")]
         public OpCodes Opcode { get; set; }
