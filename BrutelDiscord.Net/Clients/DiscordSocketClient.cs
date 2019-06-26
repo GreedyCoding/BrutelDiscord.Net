@@ -1,4 +1,5 @@
 ﻿using BrutelDiscord.Abstractions.Gateway;
+using BrutelDiscord.Enums;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -9,71 +10,120 @@ using System.Threading.Tasks;
 
 namespace BrutelDiscord.Clients
 {
-    class DiscordSocketClient : IDisposable
+    class DiscordSocketClient : ISocketClient
     {
-        public ClientWebSocket WebSocket { get; set; }
-        public CancellationTokenSource TokenSource { get; set; }
-        public CancellationToken CancelToken { get; set; }
+        public ClientWebSocket WebSocket { get; private set; }
+        public CancellationTokenSource TokenSource { get;  private set; }
+        public CancellationToken CancelToken { get; private set; }
+        public Uri WebSocketUri { get; private set; }
+        public bool IsConnected { get; private set; }
+        public int HeartbeatInterval { get; private set; }
 
-        public Uri WebSocketUri { get; set; }
-
-        private async Task StartAsync()
+        public DiscordSocketClient(string uri)
         {
-            await WebSocket.ConnectAsync(WebSocketUri, CancelToken);
+            TokenSource = new CancellationTokenSource();
+            CancelToken = TokenSource.Token;
+            WebSocket = new ClientWebSocket();
+            WebSocketUri = new Uri(uri);
+        }
 
-            Console.WriteLine($"The websocket status is {WebSocket.State.ToString()}");
+        public async Task StartAsync()
+        {
+            await WebSocket.ConnectAsync(this.WebSocketUri, this.CancelToken);
+            if(WebSocket.State == WebSocketState.Open)
+            {
+                Console.WriteLine("Connection is now open");
+                await HandleSocketMessage();
+            }
+            else
+            {
+                Console.WriteLine("Comnection to server failed");
+            }
+        }
 
+        public async Task StopAsync(WebSocketCloseStatus closeStatus, string statusDescription)
+        {
+            await WebSocket.CloseAsync(closeStatus, statusDescription, this.CancelToken);
+            Console.WriteLine($"Connection to the websocket is now {WebSocket.State.ToString()}");
+        }
+
+        public async Task SendAsync(OpCodes opCode, object data, int? sequence = null, string eventName = null)
+        {
+            GatewayPayload payload = new GatewayPayload();
+            payload.Opcode = opCode;
+            payload.Data = data;
+            payload.Sequence = sequence;
+            payload.EventName = eventName;
+
+            string jsonString = JsonConvert.SerializeObject(payload);
+            var buffer = UTF8Encoding.UTF8.GetBytes(jsonString);
+            ArraySegment<byte> arraySegment = new ArraySegment<byte>(buffer);
+
+            await WebSocket.SendAsync(arraySegment, WebSocketMessageType.Binary, true, this.CancelToken);
+            Console.WriteLine("Sent payload to the server");
+        }
+
+        public async Task<string> ReceiveMessage()
+        {
             var buffer = new byte[1024];
             ArraySegment<byte> arraySegment = new ArraySegment<byte>(buffer);
 
-            WebSocketReceiveResult result = await WebSocket.ReceiveAsync(arraySegment, CancelToken);
+            WebSocketReceiveResult result = await WebSocket.ReceiveAsync(arraySegment, this.CancelToken);
 
             string resultMessage = Encoding.ASCII.GetString(arraySegment.Array, arraySegment.Offset, result.Count);
             Console.WriteLine(resultMessage);
-
-            HandleSocketMessage(resultMessage);
-          
-
+            return resultMessage;
         }
-        void HandleSocketMessage(string message)
+
+        private async Task HandleSocketMessage()
         {
-            var payload = JsonConvert.DeserializeObject<Payload>(message);
+            string message = await ReceiveMessage();
+            var payload = JsonConvert.DeserializeObject<GatewayPayload>(message);
             var opcode = payload.Opcode;
 
             switch (opcode)
             {
-                case Enums.OpCodes.Dispatch:
+                case OpCodes.Dispatch:
                     break;
-                case Enums.OpCodes.Heartbeat:
+                case OpCodes.Heartbeat:
                     break;
-                case Enums.OpCodes.Identity:
+                case OpCodes.Identity:
                     break;
-                case Enums.OpCodes.StatusUpdate:
+                case OpCodes.StatusUpdate:
                     break;
-                case Enums.OpCodes.VoiceStateUpdate:
+                case OpCodes.VoiceStateUpdate:
                     break;
-                case Enums.OpCodes.Resume:
+                case OpCodes.Resume:
                     break;
-                case Enums.OpCodes.Reconnect:
+                case OpCodes.Reconnect:
                     break;
-                case Enums.OpCodes.RequestGuildMembers:
+                case OpCodes.RequestGuildMembers:
                     break;
-                case Enums.OpCodes.InvalidSession:
+                case OpCodes.InvalidSession:
                     break;
-                case Enums.OpCodes.Hello:
+                case OpCodes.Hello:
+                    await HelloMessageHandlerAsync(payload.Data as GatewayHelloResume);
                     break;
-                case Enums.OpCodes.HeartbeatAcknowledge:
+                case OpCodes.HeartbeatAcknowledge:
                     break;
                 default:
                     break;
             }
         }
 
-        private async Task StopAsync()
+        private async Task HelloMessageHandlerAsync(GatewayHelloResume helloResume)
         {
-            await WebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed", CancelToken);
-            Console.WriteLine($"Connection to the websocket is now {WebSocket.State.ToString()}");
+            HeartbeatInterval = helloResume.HeartbeatInterval;
+            await StartHeartbeating();
+            await SendAsync();
         }
+
+        private async Task StartHeartbeating()
+        {
+            await Task.Delay(1);
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             throw new NotImplementedException();
