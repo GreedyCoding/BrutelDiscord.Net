@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BrutelDiscord.Abstractions.Gateway;
+using BrutelDiscord.Clients;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -13,9 +14,10 @@ namespace BrutelDiscord
     {
         static async Task Main(string[] args)
         {
-            Console.WriteLine("Trying to connect to websocket server");
+            DiscordSocketClient client = new DiscordSocketClient("wss://gateway.discord.gg/?v=6&encoding=json");
 
-            Uri websocketUri = new Uri("wss://gateway.discord.gg/?v=6&encoding=json");
+            Console.WriteLine("Trying to connect to websocket server");
+            await client.StartAsync();
 
             Console.Read();
         }
