@@ -12,15 +12,5 @@ namespace BrutelDiscord.Abstractions.Gateway
 
         [JsonProperty("properties")]
         public ClientProperties ClientProperties { get; } = new ClientProperties();
-
-        [JsonProperty("compress")]
-        public bool Compress { get; set; }
-
-        [JsonProperty("shard")]
-        public ShardInfo ShardInfo { get; set; }
-
-        [JsonProperty("presence", NullValueHandling = NullValueHandling.Ignore)]
-        public StatusUpdate Presence { get; set; } = null;
-
     }
 }

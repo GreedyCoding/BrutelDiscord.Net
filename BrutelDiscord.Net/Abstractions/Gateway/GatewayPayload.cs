@@ -15,7 +15,7 @@ namespace BrutelDiscord.Abstractions.Gateway
         public object Data { get; set; }
 
         [JsonProperty("s", NullValueHandling = NullValueHandling.Ignore)]
-        public int? Sequence { get; set; }
+        public int? SequenceNumber { get; set; }
 
         [JsonProperty("t", NullValueHandling = NullValueHandling.Ignore)]
         public string EventName { get; set; }
