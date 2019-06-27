@@ -1,25 +1,30 @@
-﻿using BrutelDiscord.Abstractions.Gateway;
+﻿using BrutelDiscord.Abstractions;
+using BrutelDiscord.Abstractions.Gateway;
 using BrutelDiscord.Enums;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Text;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace BrutelDiscord.Clients
 {
-    class DiscordSocketClient : ISocketClient
+    class SocketClient : ISocketClient
     {
         public ClientWebSocket WebSocket { get; private set; }
         public CancellationTokenSource TokenSource { get;  private set; }
         public CancellationToken CancelToken { get; private set; }
-        public Uri WebSocketUri { get; private set; }
+        public Uri WebSocketUri { get; set; }
         public bool IsConnected { get; private set; }
         public int HeartbeatInterval { get; private set; }
+        public int? LastSequenceNumber { get; private set; } = null;
 
-        public DiscordSocketClient(string uri)
+        public SocketClient(string uri)
         {
             TokenSource = new CancellationTokenSource();
             CancelToken = TokenSource.Token;
@@ -33,6 +38,7 @@ namespace BrutelDiscord.Clients
             if(WebSocket.State == WebSocketState.Open)
             {
                 Console.WriteLine("Connection is now open");
+                IsConnected = true;
                 await HandleSocketMessage();
             }
             else
@@ -52,7 +58,7 @@ namespace BrutelDiscord.Clients
             GatewayPayload payload = new GatewayPayload();
             payload.Opcode = opCode;
             payload.Data = data;
-            payload.Sequence = sequence;
+            payload.SequenceNumber = sequence;
             payload.EventName = eventName;
 
             string jsonString = JsonConvert.SerializeObject(payload);
@@ -102,7 +108,7 @@ namespace BrutelDiscord.Clients
                 case OpCodes.InvalidSession:
                     break;
                 case OpCodes.Hello:
-                    await HelloMessageHandlerAsync(payload.Data as GatewayHelloResume);
+                    await HelloMessageHandlerAsync((payload.Data as JObject).ToObject<GatewayHelloResume>());
                     break;
                 case OpCodes.HeartbeatAcknowledge:
                     break;
@@ -113,15 +119,13 @@ namespace BrutelDiscord.Clients
 
         private async Task HelloMessageHandlerAsync(GatewayHelloResume helloResume)
         {
-            HeartbeatInterval = helloResume.HeartbeatInterval;
-            await StartHeartbeating();
-            await SendAsync();
-        }
+            HeartbeatHandler heartbeatHandler = new HeartbeatHandler(helloResume, this);
+            heartbeatHandler.Start();
 
-        private async Task StartHeartbeating()
-        {
-            await Task.Delay(1);
-            throw new NotImplementedException();
+            GatewayIdentify gatewayIdentify = new GatewayIdentify();
+            gatewayIdentify.Token = "NTkxMzY0NTAyMjA1ODkwNTY3.XRU0CQ.wGz55H0CIb1ss7zhIFoRhFpfduU";
+            await SendAsync(OpCodes.Identity, gatewayIdentify);
+            await ReceiveMessage();
         }
 
         public void Dispose()
