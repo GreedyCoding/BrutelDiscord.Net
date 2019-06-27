@@ -14,7 +14,7 @@ namespace BrutelDiscord
     {
         static async Task Main(string[] args)
         {
-            DiscordSocketClient client = new DiscordSocketClient("wss://gateway.discord.gg/?v=6&encoding=json");
+            SocketClient client = new SocketClient("wss://gateway.discord.gg/?v=6&encoding=json");
 
             Console.WriteLine("Trying to connect to websocket server");
             await client.StartAsync();
