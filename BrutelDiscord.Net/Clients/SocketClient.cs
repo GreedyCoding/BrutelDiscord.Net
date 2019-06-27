@@ -108,7 +108,7 @@ namespace BrutelDiscord.Clients
                 case OpCodes.InvalidSession:
                     break;
                 case OpCodes.Hello:
-                    await HelloMessageHandlerAsync((payload.Data as JObject).ToObject<GatewayHelloResume>());
+                    await HandleHelloMessageAsync((payload.Data as JObject).ToObject<GatewayHelloResume>());
                     break;
                 case OpCodes.HeartbeatAcknowledge:
                     break;
@@ -117,13 +117,13 @@ namespace BrutelDiscord.Clients
             }
         }
 
-        private async Task HelloMessageHandlerAsync(GatewayHelloResume helloResume)
+        private async Task HandleHelloMessageAsync(GatewayHelloResume helloResume)
         {
             HeartbeatHandler heartbeatHandler = new HeartbeatHandler(helloResume, this);
             heartbeatHandler.Start();
 
             GatewayIdentify gatewayIdentify = new GatewayIdentify();
-            gatewayIdentify.Token = "NTkxMzY0NTAyMjA1ODkwNTY3.XRU0CQ.wGz55H0CIb1ss7zhIFoRhFpfduU";
+            gatewayIdentify.Token = "put token here";
             await SendAsync(OpCodes.Identity, gatewayIdentify);
             await ReceiveMessage();
         }
