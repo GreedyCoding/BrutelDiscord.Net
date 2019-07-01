@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using BrutelDiscord.Storage.Implementations;
 
 namespace BrutelDiscord.Clients
 {
@@ -23,6 +24,8 @@ namespace BrutelDiscord.Clients
         public bool IsConnected { get; private set; }
         public int HeartbeatInterval { get; private set; }
         public int? LastSequenceNumber { get; private set; } = null;
+
+        internal Task _heartbeatTask;
 
         public SocketClient(string uri)
         {
@@ -49,6 +52,7 @@ namespace BrutelDiscord.Clients
 
         public async Task StopAsync(WebSocketCloseStatus closeStatus, string statusDescription)
         {
+            IsConnected = false;
             await WebSocket.CloseAsync(closeStatus, statusDescription, this.CancelToken);
             Console.WriteLine($"Connection to the websocket is now {WebSocket.State.ToString()}");
         }
@@ -108,7 +112,7 @@ namespace BrutelDiscord.Clients
                 case OpCodes.InvalidSession:
                     break;
                 case OpCodes.Hello:
-                    await HandleHelloMessageAsync((payload.Data as JObject).ToObject<GatewayHelloResume>());
+                    await OnHelloMessageAsync((payload.Data as JObject).ToObject<GatewayHelloResume>());
                     break;
                 case OpCodes.HeartbeatAcknowledge:
                     break;
@@ -117,19 +121,33 @@ namespace BrutelDiscord.Clients
             }
         }
 
-        private async Task HandleHelloMessageAsync(GatewayHelloResume helloResume)
+        private async Task OnHelloMessageAsync(GatewayHelloResume helloResume)
         {
-            HeartbeatHandler heartbeatHandler = new HeartbeatHandler(helloResume, this);
-            heartbeatHandler.Start();
+            HeartbeatInterval = helloResume.HeartbeatInterval;
+            _heartbeatTask = new Task(StartHeartbeating, CancelToken, TaskCreationOptions.LongRunning);
+            _heartbeatTask.Start();
 
             GatewayIdentify gatewayIdentify = new GatewayIdentify();
-            gatewayIdentify.Token = "put token here";
+            gatewayIdentify.Token = JsonStorage.GetToken();
+
             await SendAsync(OpCodes.Identity, gatewayIdentify);
             await ReceiveMessage();
         }
 
+        private void StartHeartbeating()
+        {
+            while (IsConnected)
+            {
+                SendAsync(OpCodes.Heartbeat, LastSequenceNumber).ConfigureAwait(false).GetAwaiter().GetResult();
+                Console.WriteLine("Sent Heartbeat");
+                Task.Delay(HeartbeatInterval, CancelToken).ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+
+        }
+
         public void Dispose()
         {
+            //Remove events in Dispose
             throw new NotImplementedException();
         }
     }
