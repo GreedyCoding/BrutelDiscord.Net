@@ -39,14 +39,18 @@ namespace BrutelDiscord.Storage.Implementations
 
             Console.WriteLine("Please Input your Bot Token");
             string token = Console.ReadLine();
-            
-            string json = JsonConvert.SerializeObject(token, Formatting.Indented);
+            SocketConfig config = new SocketConfig();
+            config.Token = token;
+
+            string json = JsonConvert.SerializeObject(config);
             File.WriteAllText(configFolder + "/" + tokenFile, json);
         }
 
-        public static string GetToken()
+        public static SocketConfig GetToken()
         {
-            return File.ReadAllText(configFolder + "/" + tokenFile);
+            string jsonString = File.ReadAllText(configFolder + "/" + tokenFile);
+            SocketConfig config = JsonConvert.DeserializeObject<SocketConfig>(jsonString);
+            return config;
         }
     }
 }
