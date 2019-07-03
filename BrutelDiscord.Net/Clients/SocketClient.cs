@@ -25,7 +25,12 @@ namespace BrutelDiscord.Clients
         public int HeartbeatInterval { get; private set; }
         public int? LastSequenceNumber { get; private set; } = null;
 
-        internal Task _heartbeatTask;
+        internal Task _heartbeatHandlerTask;
+        internal Task _socketMessageHandlerTask;
+
+        internal SocketConfig _socketConfig;
+
+        internal List<GatewayPayload> _receivedPayloads = new List<GatewayPayload>();
 
         public SocketClient(string uri)
         {
@@ -38,11 +43,15 @@ namespace BrutelDiscord.Clients
         public async Task StartAsync()
         {
             await WebSocket.ConnectAsync(this.WebSocketUri, this.CancelToken);
+
             if(WebSocket.State == WebSocketState.Open)
             {
                 Console.WriteLine("Connection is now open");
                 IsConnected = true;
-                await HandleSocketMessage();
+                //Handling first Payload
+                string message = await ReceiveMessage();
+                var payload = JsonConvert.DeserializeObject<GatewayPayload>(message);
+                await HandleGatewayPayload(payload);
             }
             else
             {
@@ -85,10 +94,8 @@ namespace BrutelDiscord.Clients
             return resultMessage;
         }
 
-        private async Task HandleSocketMessage()
+        private async Task HandleGatewayPayload(GatewayPayload payload)
         {
-            string message = await ReceiveMessage();
-            var payload = JsonConvert.DeserializeObject<GatewayPayload>(message);
             var opcode = payload.Opcode;
 
             switch (opcode)
@@ -123,26 +130,42 @@ namespace BrutelDiscord.Clients
 
         private async Task OnHelloMessageAsync(GatewayHelloResume helloResume)
         {
+            _socketMessageHandlerTask = new Task(StartHandlingSocketMessages, CancelToken, TaskCreationOptions.LongRunning);
+            _socketMessageHandlerTask.Start();
+
             HeartbeatInterval = helloResume.HeartbeatInterval;
-            _heartbeatTask = new Task(StartHeartbeating, CancelToken, TaskCreationOptions.LongRunning);
-            _heartbeatTask.Start();
+            _heartbeatHandlerTask = new Task(StartHeartbeating, CancelToken, TaskCreationOptions.LongRunning);
+            _heartbeatHandlerTask.Start();
 
             GatewayIdentify gatewayIdentify = new GatewayIdentify();
-            gatewayIdentify.Token = JsonStorage.GetToken();
-
+            _socketConfig = JsonStorage.GetToken();
+            gatewayIdentify.Token = _socketConfig.Token;
             await SendAsync(OpCodes.Identity, gatewayIdentify);
-            await ReceiveMessage();
         }
 
-        private void StartHeartbeating()
+        private async void StartHeartbeating()
         {
             while (IsConnected)
             {
-                SendAsync(OpCodes.Heartbeat, LastSequenceNumber).ConfigureAwait(false).GetAwaiter().GetResult();
+                await SendAsync(OpCodes.Heartbeat, LastSequenceNumber);
                 Console.WriteLine("Sent Heartbeat");
-                Task.Delay(HeartbeatInterval, CancelToken).ConfigureAwait(false).GetAwaiter().GetResult();
+                await Task.Delay(HeartbeatInterval, CancelToken);
             }
 
+        }
+
+        private async void StartHandlingSocketMessages()
+        {
+            while (IsConnected)
+            {
+                Console.WriteLine(WebSocket.State.ToString());
+                string receivedMessage = await ReceiveMessage();
+                GatewayPayload receivedPayload = JsonConvert.DeserializeObject<GatewayPayload>(receivedMessage);
+                if(receivedPayload != null)
+                {
+                    await HandleGatewayPayload(receivedPayload);
+                }
+            }
         }
 
         public void Dispose()
