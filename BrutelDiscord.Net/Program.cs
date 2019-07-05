@@ -8,6 +8,7 @@ using BrutelDiscord.Clients;
 using BrutelDiscord.Storage.Implementations;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NLog;
 
 namespace BrutelDiscord
 {
@@ -20,7 +21,8 @@ namespace BrutelDiscord
                 JsonStorage.SetToken();
             }
 
-            SocketClient client = new SocketClient("wss://gateway.discord.gg/?v=6&encoding=json");
+
+            SocketClient client = new SocketClient("wss://gateway.discord.gg/?v=6&encoding=json", new Socket());
 
             Console.WriteLine("Trying to connect to websocket server");
             await client.StartAsync();

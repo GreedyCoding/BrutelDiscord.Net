@@ -5,6 +5,12 @@ VisualStudioVersion = 16.0.28803.156
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BrutelDiscord", "BrutelDiscord.Net\BrutelDiscord.csproj", "{8798EAEB-1B2C-4F0B-8834-16C38BDE4DFC}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{928D023E-D727-402A-AE17-BB2B79648C02}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{BF2D6DF5-875F-4FC2-97D4-8B113C1D418C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrutelDiscordTest", "BrutelDiscordTest\BrutelDiscordTest.csproj", "{BACB62FC-6CB0-4261-81BE-B4AA6B36E7B0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,9 +21,17 @@ Global
 		{8798EAEB-1B2C-4F0B-8834-16C38BDE4DFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8798EAEB-1B2C-4F0B-8834-16C38BDE4DFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8798EAEB-1B2C-4F0B-8834-16C38BDE4DFC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BACB62FC-6CB0-4261-81BE-B4AA6B36E7B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BACB62FC-6CB0-4261-81BE-B4AA6B36E7B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BACB62FC-6CB0-4261-81BE-B4AA6B36E7B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BACB62FC-6CB0-4261-81BE-B4AA6B36E7B0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{8798EAEB-1B2C-4F0B-8834-16C38BDE4DFC} = {BF2D6DF5-875F-4FC2-97D4-8B113C1D418C}
+		{BACB62FC-6CB0-4261-81BE-B4AA6B36E7B0} = {928D023E-D727-402A-AE17-BB2B79648C02}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {719F02B7-5A0B-4C31-B3C6-852CA78FC8DA}

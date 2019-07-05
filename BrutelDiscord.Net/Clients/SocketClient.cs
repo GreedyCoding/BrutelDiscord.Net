@@ -12,87 +12,76 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 using BrutelDiscord.Storage.Implementations;
+using NLog;
+using BrutelDiscord.Interfaces;
 
 namespace BrutelDiscord.Clients
 {
-    class SocketClient : ISocketClient
+    public class SocketClient : ISocketClient
     {
         public ClientWebSocket WebSocket { get; private set; }
+
+        private readonly Logger _logger;
+
         public CancellationTokenSource TokenSource { get;  private set; }
-        public CancellationToken CancelToken { get; private set; }
         public Uri WebSocketUri { get; set; }
-        public bool IsConnected { get; private set; }
+
+        public bool IsConnected => this._socket.IsConnected;
+
         public int HeartbeatInterval { get; private set; }
+
+   
+
         public int? LastSequenceNumber { get; private set; } = null;
 
-        internal Task _heartbeatHandlerTask;
-        internal Task _socketMessageHandlerTask;
+        private Task _heartbeatHandlerTask;
+        private Task _socketMessageHandlerTask;
 
-        internal SocketConfig _socketConfig;
+        private SocketConfig _socketConfig;
 
-        internal List<GatewayPayload> _receivedPayloads = new List<GatewayPayload>();
+        private List<GatewayPayload> _receivedPayloads = new List<GatewayPayload>();
 
-        public SocketClient(string uri)
+        private ISocket _socket;
+        private string _uri;
+
+        public SocketClient(string uri, ISocket socket)
         {
+            this._logger = LogManager.GetCurrentClassLogger();
             TokenSource = new CancellationTokenSource();
-            CancelToken = TokenSource.Token;
-            WebSocket = new ClientWebSocket();
-            WebSocketUri = new Uri(uri);
+            this._socket = socket;          
+            this._uri = uri;
+            this._logger?.Debug("Hallo");
         }
 
         public async Task StartAsync()
         {
-            await WebSocket.ConnectAsync(this.WebSocketUri, this.CancelToken);
-
-            if(WebSocket.State == WebSocketState.Open)
+            this._socket.ReceivedMessage += this.MessageReceived;
+            if(await this._socket.Connect(this._uri, TimeSpan.FromMilliseconds(300),this.TokenSource.Token))
             {
-                Console.WriteLine("Connection is now open");
-                IsConnected = true;
-                //Handling first Payload
-                string message = await ReceiveMessage();
-                var payload = JsonConvert.DeserializeObject<GatewayPayload>(message);
-                await HandleGatewayPayload(payload);
+                this._logger?.Info("Verbunden");
+              
             }
             else
             {
-                Console.WriteLine("Comnection to server failed");
+                throw new  Exception("Comnection to server failed");
             }
         }
 
-        public async Task StopAsync(WebSocketCloseStatus closeStatus, string statusDescription)
+        private async void MessageReceived(object sender, Dto.EventArg.SocketMessageEventArgs e)
         {
-            IsConnected = false;
-            await WebSocket.CloseAsync(closeStatus, statusDescription, this.CancelToken);
+            this._logger?.Debug("Received Message");
+            var payload = JsonConvert.DeserializeObject<GatewayPayload>(e.Message);
+            await this.HandleGatewayPayload(payload);
+        }
+
+        public void Stop(WebSocketCloseStatus closeStatus, string statusDescription)
+        {
+            this.TokenSource.Cancel();
+            this._socket.Stop();
+            this._socket.ReceivedMessage -= this.MessageReceived;
+            
             Console.WriteLine($"Connection to the websocket is now {WebSocket.State.ToString()}");
-        }
-
-        public async Task SendAsync(OpCodes opCode, object data, int? sequence = null, string eventName = null)
-        {
-            GatewayPayload payload = new GatewayPayload();
-            payload.Opcode = opCode;
-            payload.Data = data;
-            payload.SequenceNumber = sequence;
-            payload.EventName = eventName;
-
-            string jsonString = JsonConvert.SerializeObject(payload);
-            var buffer = UTF8Encoding.UTF8.GetBytes(jsonString);
-            ArraySegment<byte> arraySegment = new ArraySegment<byte>(buffer);
-
-            await WebSocket.SendAsync(arraySegment, WebSocketMessageType.Binary, true, this.CancelToken);
-            Console.WriteLine("Sent payload to the server");
-        }
-
-        public async Task<string> ReceiveMessage()
-        {
-            var buffer = new byte[1024];
-            ArraySegment<byte> arraySegment = new ArraySegment<byte>(buffer);
-
-            WebSocketReceiveResult result = await WebSocket.ReceiveAsync(arraySegment, this.CancelToken);
-
-            string resultMessage = Encoding.ASCII.GetString(arraySegment.Array, arraySegment.Offset, result.Count);
-            Console.WriteLine(resultMessage);
-            return resultMessage;
-        }
+        }   
 
         private async Task HandleGatewayPayload(GatewayPayload payload)
         {
@@ -129,49 +118,45 @@ namespace BrutelDiscord.Clients
         }
 
         private async Task OnHelloMessageAsync(GatewayHelloResume helloResume)
-        {
-            _socketMessageHandlerTask = new Task(StartHandlingSocketMessages, CancelToken, TaskCreationOptions.LongRunning);
-            _socketMessageHandlerTask.Start();
+        { 
 
-            HeartbeatInterval = helloResume.HeartbeatInterval;
-            _heartbeatHandlerTask = new Task(StartHeartbeating, CancelToken, TaskCreationOptions.LongRunning);
-            _heartbeatHandlerTask.Start();
+            this._socket.StartHeartBeat(helloResume.HeartbeatInterval);
 
             GatewayIdentify gatewayIdentify = new GatewayIdentify();
             _socketConfig = JsonStorage.GetToken();
             gatewayIdentify.Token = _socketConfig.Token;
-            await SendAsync(OpCodes.Identity, gatewayIdentify);
+            await this._socket.SendAsync(OpCodes.Identity, gatewayIdentify);
         }
 
-        private async void StartHeartbeating()
-        {
-            while (IsConnected)
-            {
-                await SendAsync(OpCodes.Heartbeat, LastSequenceNumber);
-                Console.WriteLine("Sent Heartbeat");
-                await Task.Delay(HeartbeatInterval, CancelToken);
-            }
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
 
-        }
-
-        private async void StartHandlingSocketMessages()
+        protected virtual void Dispose(bool disposing)
         {
-            while (IsConnected)
+            if (!disposedValue)
             {
-                Console.WriteLine(WebSocket.State.ToString());
-                string receivedMessage = await ReceiveMessage();
-                GatewayPayload receivedPayload = JsonConvert.DeserializeObject<GatewayPayload>(receivedMessage);
-                if(receivedPayload != null)
+                if (disposing)
                 {
-                    await HandleGatewayPayload(receivedPayload);
+                    this._socket.Dispose();
                 }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+                // TODO: set large fields to null.
+
+                disposedValue = true;
             }
         }
 
+
+        // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
-            //Remove events in Dispose
-            throw new NotImplementedException();
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
+
         }
+        #endregion
+
+
     }
 }
