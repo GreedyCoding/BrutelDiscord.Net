@@ -17,9 +17,10 @@ namespace BrutelDiscord.Clients
     {
         //Events
         public event EventHandler<SocketMessageEventArgs> ReceivedMessage;
-        private void OnReceivedMessage(SocketMessageEventArgs eventArgs) => this.ReceivedMessage?.Invoke(this, eventArgs);
+        private void RaiseReceivedMessage(SocketMessageEventArgs eventArgs) => this.ReceivedMessage?.Invoke(this, eventArgs);
 
         //Properties
+        public int? LastSequenceNumber => this._lastSequenceNumber;
         public bool IsConnected => this._webSocket.State == WebSocketState.Open;
         public ClientWebSocket WebSocket => this._webSocket;
 
@@ -32,7 +33,7 @@ namespace BrutelDiscord.Clients
         private CancellationTokenSource _cancellationTokenSource;
 
         private Task _listenTask;
-        private int _lastSequenceNumber;
+        private int? _lastSequenceNumber;
 
         public SocketClient()
         {
@@ -82,10 +83,10 @@ namespace BrutelDiscord.Clients
         /// <summary>
         /// Stopping connection to a websocket
         /// </summary>
-        public async Task StopAsync()
+        public async Task StopAsync(WebSocketCloseStatus status, string statusDescription)
         {
             //TODO Finish implementation of the stop method for the socketclient
-            await this._webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Stopped websocket connection", this._cancellationTokenSource.Token);
+            await this._webSocket.CloseAsync(status, statusDescription, this._cancellationTokenSource.Token);
         }
 
 
@@ -115,7 +116,7 @@ namespace BrutelDiscord.Clients
         }
 
         /// <summary>
-        /// Receiving messages from the websocket
+        /// Receiving messages from the websocket and deserializing it into an GatewayPayload
         /// </summary>
         private async Task ReceiveMessage()
         {
@@ -134,7 +135,21 @@ namespace BrutelDiscord.Clients
                     break;
                 }
             }
-            this.OnReceivedMessage(new SocketMessageEventArgs { Message = resultMessage });
+
+            var payload = JsonConvert.DeserializeObject<GatewayPayload>(resultMessage);
+
+            if (payload.SequenceNumber != null)
+            {
+                this._lastSequenceNumber = payload.SequenceNumber;
+            }
+
+            this._logger?.Debug("Received Message");
+            this._logger?.Debug($"OpCode {(int)payload.Opcode}: {payload.Opcode}" +
+                                $"Data: {payload.Data}" +
+                                $"Sequence Number: {payload.SequenceNumber}" +
+                                $"Event Name: {payload.EventName}");
+
+            this.RaiseReceivedMessage(new SocketMessageEventArgs { Payload = payload });
         }
 
         /// <summary>
