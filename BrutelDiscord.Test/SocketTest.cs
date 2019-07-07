@@ -1,5 +1,5 @@
 ﻿using BrutelDiscord.Clients;
-using BrutelDiscord.Interfaces;
+using BrutelDiscord.Clients.Interfaces;
 using Moq;
 using System;
 using System.Threading;

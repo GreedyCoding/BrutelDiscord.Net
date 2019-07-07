@@ -10,12 +10,16 @@ namespace BrutelDiscord.Clients.Interfaces
 {
     public interface ISocketClient : IDisposable
     {
+        //Events
         event EventHandler<SocketMessageEventArgs> ReceivedMessage;
+
+        //Properties
+        int? LastSequenceNumber { get; }
         bool IsConnected { get; }
         ClientWebSocket WebSocket { get; }
 
         Task<bool> StartAsync(string uri, TimeSpan pollTime, System.Threading.CancellationToken token);
-        Task StopAsync();
+        Task StopAsync(WebSocketCloseStatus status, string statusDescription);
         void StartHeartbeatTimer(int intervall);
         Task SendAsync(OpCodes opCode, object data, int? sequence = null, string eventName = null);
     }

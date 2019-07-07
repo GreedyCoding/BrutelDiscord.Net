@@ -14,6 +14,7 @@ using System.Timers;
 using BrutelDiscord.Storage.Implementations;
 using NLog;
 using BrutelDiscord.Clients.Interfaces;
+using BrutelDiscord.Dto.EventArg;
 
 namespace BrutelDiscord.Clients
 {
@@ -22,6 +23,7 @@ namespace BrutelDiscord.Clients
         //Properties
         public CancellationTokenSource TokenSource { get; private set; }
         public bool IsConnected => this._socketClient.IsConnected;
+        public int? LastSequenceNumber => this._socketClient.LastSequenceNumber;
         
         //Fields
         private readonly Logger _logger;
@@ -29,6 +31,11 @@ namespace BrutelDiscord.Clients
         private ISocketClient _socketClient;
         private string _uri;
 
+        /// <summary>
+        /// Constructor for DiscordSocketClient
+        /// </summary>
+        /// <param name="uri">Uri of the websocket to connect to as string</param>
+        /// <param name="socket">SocketClient the DiscordSocketClient uses for sending and receiving messages</param>
         public DiscordSocketClient(string uri, ISocketClient socket)
         {
             this._logger = LogManager.GetCurrentClassLogger();
@@ -37,11 +44,14 @@ namespace BrutelDiscord.Clients
             this._uri = uri;
         }
 
+        /// <summary>
+        /// Subscribes to SocketClients ReceivedMessage event and starts the SocketClient
+        /// </summary>
         public async Task StartAsync()
         {
-            this._socketClient.ReceivedMessage += this.MessageReceived;
+            this._socketClient.ReceivedMessage += this.OnMessageReceived;
 
-            if(await this._socketClient.StartAsync(this._uri, TimeSpan.FromMilliseconds(300), this.TokenSource.Token))
+            if (await this._socketClient.StartAsync(this._uri, TimeSpan.FromMilliseconds(300), this.TokenSource.Token))
             {
                 this._logger?.Info("Connection established");
             }
@@ -50,24 +60,36 @@ namespace BrutelDiscord.Clients
                 throw new Exception("Comnection to server failed");
             }
         }
+
+        /// <summary>
+        /// Cancels the TokenSource of this class, stops the SocketClient and unsubscribes from SocketClients events
+        /// </summary>
+        /// <param name="closeStatus">Status why the connection was closed</param>
+        /// <param name="statusDescription">Further description of the close status</param>
         public async Task StopAsync(WebSocketCloseStatus closeStatus, string statusDescription)
         {
             this.TokenSource.Cancel();
-            await this._socketClient.StopAsync();
-            this._socketClient.ReceivedMessage -= this.MessageReceived;
+            await this._socketClient.StopAsync(closeStatus, statusDescription);
+            this._socketClient.ReceivedMessage -= this.OnMessageReceived;
 
             this._logger?.Info($"Connection to the websocket is now {_socketClient.WebSocket.State.ToString()}");
         }
 
-        private async void MessageReceived(object sender, Dto.EventArg.SocketMessageEventArgs e)
+        /// <summary>
+        /// Method hooked to the SocketClients MessageReceived Event
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="eventArgs">SocketMessageEventArgs contains the received json message</param>
+        private async void OnMessageReceived(object sender, SocketMessageEventArgs eventArgs)
         {
-            this._logger?.Debug("Received Message");
-            var payload = JsonConvert.DeserializeObject<GatewayPayload>(e.Message);
-            this._logger?.Debug($"{payload.Opcode}{payload.Data}{payload.SequenceNumber}{payload.EventName}");
-            await this.HandleGatewayPayload(payload);
+            await this.HandleGatewayPayload(eventArgs.Payload);
         }
 
-
+        /// <summary>
+        /// Handles Gateway Payloads received from the SocketClient
+        /// </summary>
+        /// <param name="payload">Payload received from the SocketClient</param>
+        /// <returns></returns>
         private async Task HandleGatewayPayload(GatewayPayload payload)
         {
             var opcode = payload.Opcode;
@@ -77,18 +99,9 @@ namespace BrutelDiscord.Clients
                 case OpCodes.Dispatch:
                     break;
                 case OpCodes.Heartbeat:
-                    break;
-                case OpCodes.Identity:
-                    break;
-                case OpCodes.StatusUpdate:
-                    break;
-                case OpCodes.VoiceStateUpdate:
-                    break;
-                case OpCodes.Resume:
+                    await _socketClient.SendAsync(OpCodes.Heartbeat, LastSequenceNumber);
                     break;
                 case OpCodes.Reconnect:
-                    break;
-                case OpCodes.RequestGuildMembers:
                     break;
                 case OpCodes.InvalidSession:
                     break;
@@ -102,6 +115,10 @@ namespace BrutelDiscord.Clients
             }
         }
 
+        /// <summary>
+        /// Method to handle the first message from the Discord websocket
+        /// </summary>
+        /// <param name="helloResume">Gateway payload sent from the websocket</param>
         private async Task OnHelloMessageAsync(GatewayHelloResume helloResume)
         { 
 
@@ -141,7 +158,6 @@ namespace BrutelDiscord.Clients
 
         }
         #endregion
-
 
     }
 }

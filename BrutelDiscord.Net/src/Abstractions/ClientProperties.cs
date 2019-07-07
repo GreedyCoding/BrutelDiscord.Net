@@ -16,27 +16,28 @@ namespace BrutelDiscord.Abstractions
         {
             get
             {
-#if !HAS_ENVIRONMENT
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                    return "windows";
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                    return "linux";
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                    return "osx";
+                #if !HAS_ENVIRONMENT
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                        return "windows";
+                    else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                        return "linux";
+                    else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                        return "osx";
 
-                var plat = RuntimeInformation.OSDescription.ToLowerInvariant();
-#else
-                if (Environment.OSVersion.Platform == PlatformID.Win32NT || Environment.OSVersion.Platform == PlatformID.WinCE)
-                    return "windows";
-                else if (Environment.OSVersion.Platform == PlatformID.MacOSX)
-                    return "osx";
-                else if (Environment.OSVersion.Platform == PlatformID.Win32S || Environment.OSVersion.Platform == PlatformID.Win32Windows || Environment.OSVersion.Platform == PlatformID.Xbox)
-                    return "potato";
-                else if (Environment.OSVersion.Platform == PlatformID.Unix)
-                    return "unix";
+                    var plat = RuntimeInformation.OSDescription.ToLowerInvariant();
+                #else
+                    if (Environment.OSVersion.Platform == PlatformID.Win32NT || Environment.OSVersion.Platform == PlatformID.WinCE)
+                        return "windows";
+                    else if (Environment.OSVersion.Platform == PlatformID.MacOSX)
+                        return "osx";
+                    else if (Environment.OSVersion.Platform == PlatformID.Win32S || Environment.OSVersion.Platform == PlatformID.Win32Windows || Environment.OSVersion.Platform == PlatformID.Xbox)
+                        return "potato";
+                    else if (Environment.OSVersion.Platform == PlatformID.Unix)
+                        return "unix";
 
-                var plat = Environment.OSVersion.VersionString;
-#endif
+                    var plat = Environment.OSVersion.VersionString;
+                #endif
+
                 if (plat.Contains("freebsd"))
                     return "freebsd";
                 else if (plat.Contains("openbsd"))
@@ -53,32 +54,21 @@ namespace BrutelDiscord.Abstractions
                     return "osx";
                 else if (plat.Contains("unix"))
                     return "unix";
-                else return "toaster (unknown)";
+                else return "unknown operating system";
             }
         }
 
         [JsonProperty("$browser")]
-        public string Browser
-        {
-            get
-            {
-                var a = typeof(DiscordSocketClient).GetTypeInfo().Assembly;
-                var an = a.GetName();
-                return $"BrutelDiscord.Net {an.Version.ToString(4)}";
-            }
-        }
+        public string Browser => "BrutelDiscord.Net";
 
         [JsonProperty("$device")]
-        public string Device
-            => this.Browser;
+        public string Device => "BrutelDevice v0.9";
 
         [JsonProperty("$referrer")]
-        public string Referrer
-            => "";
+        public string Referrer => "";
 
         [JsonProperty("$referring_domain")]
-        public string ReferringDomain
-            => "";
+        public string ReferringDomain => "";
 
     }
 }
