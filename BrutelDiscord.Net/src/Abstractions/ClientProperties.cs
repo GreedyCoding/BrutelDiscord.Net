@@ -62,7 +62,7 @@ namespace BrutelDiscord.Abstractions
         {
             get
             {
-                var a = typeof(SocketClient).GetTypeInfo().Assembly;
+                var a = typeof(DiscordSocketClient).GetTypeInfo().Assembly;
                 var an = a.GetName();
                 return $"BrutelDiscord.Net {an.Version.ToString(4)}";
             }

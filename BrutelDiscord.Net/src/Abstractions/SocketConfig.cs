@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace BrutelDiscord
+namespace BrutelDiscord.Abstractions
 {
     public class SocketConfig
     {

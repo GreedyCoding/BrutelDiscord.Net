@@ -4,16 +4,14 @@ using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace BrutelDiscord.Clients
+namespace BrutelDiscord.Clients.Interfaces
 {
-    internal interface ISocketClient : IDisposable
+    internal interface IDiscordSocketClient : IDisposable
     {
-        ClientWebSocket WebSocket { get; }
         CancellationTokenSource TokenSource { get; }
-        Uri WebSocketUri { get; }
         bool IsConnected { get; }
 
         Task StartAsync();
-        void Stop (WebSocketCloseStatus closeStatus, string statusDescription);
+        Task StopAsync(WebSocketCloseStatus closeStatus, string statusDescription);
     }
 }

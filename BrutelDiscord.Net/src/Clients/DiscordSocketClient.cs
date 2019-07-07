@@ -13,75 +13,60 @@ using System.Threading.Tasks;
 using System.Timers;
 using BrutelDiscord.Storage.Implementations;
 using NLog;
-using BrutelDiscord.Interfaces;
+using BrutelDiscord.Clients.Interfaces;
 
 namespace BrutelDiscord.Clients
 {
-    public class SocketClient : ISocketClient
+    public class DiscordSocketClient : IDiscordSocketClient
     {
-        public ClientWebSocket WebSocket { get; private set; }
-
+        //Properties
+        public CancellationTokenSource TokenSource { get; private set; }
+        public bool IsConnected => this._socketClient.IsConnected;
+        
+        //Fields
         private readonly Logger _logger;
-
-        public CancellationTokenSource TokenSource { get;  private set; }
-        public Uri WebSocketUri { get; set; }
-
-        public bool IsConnected => this._socket.IsConnected;
-
-        public int HeartbeatInterval { get; private set; }
-
-   
-
-        public int? LastSequenceNumber { get; private set; } = null;
-
-        private Task _heartbeatHandlerTask;
-        private Task _socketMessageHandlerTask;
-
         private SocketConfig _socketConfig;
-
-        private List<GatewayPayload> _receivedPayloads = new List<GatewayPayload>();
-
-        private ISocket _socket;
+        private ISocketClient _socketClient;
         private string _uri;
 
-        public SocketClient(string uri, ISocket socket)
+        public DiscordSocketClient(string uri, ISocketClient socket)
         {
             this._logger = LogManager.GetCurrentClassLogger();
-            TokenSource = new CancellationTokenSource();
-            this._socket = socket;          
+            this.TokenSource = new CancellationTokenSource();
+            this._socketClient = socket;          
             this._uri = uri;
-            this._logger?.Debug("Hallo");
         }
 
         public async Task StartAsync()
         {
-            this._socket.ReceivedMessage += this.MessageReceived;
-            if(await this._socket.Connect(this._uri, TimeSpan.FromMilliseconds(300),this.TokenSource.Token))
+            this._socketClient.ReceivedMessage += this.MessageReceived;
+
+            if(await this._socketClient.StartAsync(this._uri, TimeSpan.FromMilliseconds(300), this.TokenSource.Token))
             {
-                this._logger?.Info("Verbunden");
-              
+                this._logger?.Info("Connection established");
             }
             else
             {
-                throw new  Exception("Comnection to server failed");
+                throw new Exception("Comnection to server failed");
             }
+        }
+        public async Task StopAsync(WebSocketCloseStatus closeStatus, string statusDescription)
+        {
+            this.TokenSource.Cancel();
+            await this._socketClient.StopAsync();
+            this._socketClient.ReceivedMessage -= this.MessageReceived;
+
+            this._logger?.Info($"Connection to the websocket is now {_socketClient.WebSocket.State.ToString()}");
         }
 
         private async void MessageReceived(object sender, Dto.EventArg.SocketMessageEventArgs e)
         {
             this._logger?.Debug("Received Message");
             var payload = JsonConvert.DeserializeObject<GatewayPayload>(e.Message);
+            this._logger?.Debug($"{payload.Opcode}{payload.Data}{payload.SequenceNumber}{payload.EventName}");
             await this.HandleGatewayPayload(payload);
         }
 
-        public void Stop(WebSocketCloseStatus closeStatus, string statusDescription)
-        {
-            this.TokenSource.Cancel();
-            this._socket.Stop();
-            this._socket.ReceivedMessage -= this.MessageReceived;
-            
-            Console.WriteLine($"Connection to the websocket is now {WebSocket.State.ToString()}");
-        }   
 
         private async Task HandleGatewayPayload(GatewayPayload payload)
         {
@@ -120,12 +105,12 @@ namespace BrutelDiscord.Clients
         private async Task OnHelloMessageAsync(GatewayHelloResume helloResume)
         { 
 
-            this._socket.StartHeartBeat(helloResume.HeartbeatInterval);
+            this._socketClient.StartHeartbeatTimer(helloResume.HeartbeatInterval);
 
             GatewayIdentify gatewayIdentify = new GatewayIdentify();
             _socketConfig = JsonStorage.GetToken();
             gatewayIdentify.Token = _socketConfig.Token;
-            await this._socket.SendAsync(OpCodes.Identity, gatewayIdentify);
+            await this._socketClient.SendAsync(OpCodes.Identity, gatewayIdentify);
         }
 
         #region IDisposable Support
@@ -137,7 +122,7 @@ namespace BrutelDiscord.Clients
             {
                 if (disposing)
                 {
-                    this._socket.Dispose();
+                    this._socketClient.Dispose();
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.

@@ -16,18 +16,18 @@ namespace BrutelDiscord
     {
         static async Task Main(string[] args)
         {
+            Logger _logger = LogManager.GetCurrentClassLogger();
+
             if (!JsonStorage.ConfigExists())
             {
                 JsonStorage.SetToken();
             }
+            
+            DiscordSocketClient client = new DiscordSocketClient("wss://gateway.discord.gg/?v=6&encoding=json", new SocketClient());
+            _logger?.Info("Trying to establish connection to the websocket server");
 
-
-            SocketClient client = new SocketClient("wss://gateway.discord.gg/?v=6&encoding=json", new Socket());
-
-            Console.WriteLine("Trying to connect to websocket server");
             await client.StartAsync();
-
-            Console.Read();
+            await Task.Delay(-1);
         }
     }
 }
