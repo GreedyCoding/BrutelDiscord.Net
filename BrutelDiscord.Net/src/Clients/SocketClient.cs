@@ -17,23 +17,27 @@ namespace BrutelDiscord.Clients
     {
         //Events
         public event EventHandler<SocketMessageEventArgs> ReceivedMessage;
-        private void RaiseReceivedMessage(SocketMessageEventArgs eventArgs) => this.ReceivedMessage?.Invoke(this, eventArgs);
+        private void OnReceivedMessage(SocketMessageEventArgs eventArgs) => this.ReceivedMessage?.Invoke(this, eventArgs);
 
         //Properties
         public int? LastSequenceNumber => this._lastSequenceNumber;
         public bool IsConnected => this._webSocket.State == WebSocketState.Open;
         public ClientWebSocket WebSocket => this._webSocket;
+        public DateTime LastHeartbeatAcknowledge { get; set; }
 
         //Fields
         private bool disposedValue = false; // To detect redundant calls
+        private int? _lastSequenceNumber;
+        private int _heartbeatInterval;
         private Logger _logger;
         private ClientWebSocket _webSocket;
         private Uri _webSocketUri;
-        private Timer _heartBeatTimer;
         private CancellationTokenSource _cancellationTokenSource;
+        private Timer _heartBeatTimer;
 
+        //Tasks
         private Task _listenTask;
-        private int? _lastSequenceNumber;
+        private Task _heatbeatValidatorTask;
 
         public SocketClient()
         {
@@ -66,9 +70,9 @@ namespace BrutelDiscord.Clients
             if(this._webSocket.State == WebSocketState.Open)
             {
                 this._logger?.Info("Connection is now open");
-                //Handling first Payload
                 this._cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
-                this._listenTask = this.ListenForMessage(pollTime, this._cancellationTokenSource.Token);
+                this._listenTask = this.ListenForMessageAsync(pollTime, this._cancellationTokenSource.Token);
+                this._heatbeatValidatorTask = this.CheckForHeartbeatAcknowledgeAsync(pollTime, this._cancellationTokenSource.Token);
                 result = true;
                
             }
@@ -80,12 +84,20 @@ namespace BrutelDiscord.Clients
             return result;
         }
 
+        private Task ResumeConnectionAsync()
+        {
+            //TODO Implement ResumeConnectionAsync
+            throw new NotImplementedException();
+        }
+
+
         /// <summary>
         /// Stopping connection to a websocket
         /// </summary>
         public async Task StopAsync(WebSocketCloseStatus status, string statusDescription)
         {
             //TODO Finish implementation of the stop method for the socketclient
+            this._logger?.Debug($"Connection will be closed with this status {status.ToString()} and the following description: {statusDescription}");
             await this._webSocket.CloseAsync(status, statusDescription, this._cancellationTokenSource.Token);
         }
 
@@ -118,7 +130,7 @@ namespace BrutelDiscord.Clients
         /// <summary>
         /// Receiving messages from the websocket and deserializing it into an GatewayPayload
         /// </summary>
-        private async Task ReceiveMessage()
+        private async Task ReceiveMessageAsync()
         {
             var resultMessage = string.Empty;
 
@@ -144,43 +156,63 @@ namespace BrutelDiscord.Clients
             }
 
             this._logger?.Debug("Received Message");
-            this._logger?.Debug($"OpCode {(int)payload.Opcode}: {payload.Opcode}" +
+            this._logger?.Debug($"OpCode: {(int)payload.Opcode} - {payload.Opcode}" +
                                 $"Data: {payload.Data}" +
                                 $"Sequence Number: {payload.SequenceNumber}" +
                                 $"Event Name: {payload.EventName}");
 
-            this.RaiseReceivedMessage(new SocketMessageEventArgs { Payload = payload });
+            this.OnReceivedMessage(new SocketMessageEventArgs { Payload = payload });
         }
 
         /// <summary>
         /// This task is used to listen for messages
         /// </summary>
-        /// <param name="pollTime">Delay for receiving messages</param>
-        /// <param name="token">Linked CancellationToken</param>
-        private async Task ListenForMessage(TimeSpan pollTime, CancellationToken token)
+        /// <param name="pollTime">Delay for checking for messages</param>
+        /// <param name="token">CancellationToken to check if the connection is terminated</param>
+        private async Task ListenForMessageAsync(TimeSpan pollTime, CancellationToken token)
         {
             while (!token.IsCancellationRequested && this.IsConnected)
             {
-                await this.ReceiveMessage();
+                await this.ReceiveMessageAsync();
                 await Task.Delay(pollTime);
             }
         }
-        
+
+        /// <summary>
+        /// This task is used to check for heartbeat acknowledges and tries to reconnect if no Heartbeats are received in time
+        /// </summary>
+        /// <param name="pollTime">Delay for checking the hearbeat acknowledge messages</param>
+        /// <param name="token">CancellationToken to check if the connection is terminated</param>
+        /// <returns></returns>
+        private async Task CheckForHeartbeatAcknowledgeAsync(TimeSpan pollTime, CancellationToken token)
+        {
+            await Task.Delay(pollTime);
+            while (!token.IsCancellationRequested && this.IsConnected)
+            {
+                if (LastHeartbeatAcknowledge.AddMilliseconds(this._heartbeatInterval * 2) < DateTime.Now)
+                {
+                    await StopAsync(WebSocketCloseStatus.PolicyViolation, "No heartbeat acknowledge was received in time");
+                    await ResumeConnectionAsync();
+                }
+                await Task.Delay(pollTime);
+            }
+        }
 
         /// <summary>
         /// Starts the threading timer with the SendHeartbeat callback every {interval} milliseconds
         /// </summary>
-        /// <param name="interval">HeartbeatInterval provided by Discord from the first websocket message</param>
+        /// <param name="interval">HeartbeatInterval provided by Discord in the first websocket message</param>
         public void StartHeartbeatTimer(int interval)
         {
-            this._heartBeatTimer = new Timer(this.SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(interval));
+            this._heartbeatInterval = interval;
+            this._heartBeatTimer = new Timer(this.SendHeartbeatAsync, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(interval));
         }
 
         /// <summary>
         /// Sends a heartbeat payload to the websocket
         /// </summary>
         /// <param name="state"></param>
-        private async void SendHeartbeat(object state)
+        private async void SendHeartbeatAsync(object state)
         {
             await this.SendAsync(OpCodes.Heartbeat, this._lastSequenceNumber);
             this._logger.Debug("Sent Heartbeat");
@@ -195,11 +227,11 @@ namespace BrutelDiscord.Clients
             {
                 if (disposing)
                 {
-                    // TODO: dispose managed state (managed objects).
+                    // dispose managed state (managed objects).
                 }
 
-                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // TODO: set large fields to null.
+                // free unmanaged resources (unmanaged objects) and override a finalizer below.
+                // set large fields to null.
 
                 disposedValue = true;
             }
