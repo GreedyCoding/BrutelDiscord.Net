@@ -99,7 +99,7 @@ namespace BrutelDiscord.Clients
                 case OpCodes.Dispatch:
                     break;
                 case OpCodes.Heartbeat:
-                    await _socketClient.SendAsync(OpCodes.Heartbeat, LastSequenceNumber);
+                    await this._socketClient.SendAsync(OpCodes.Heartbeat, LastSequenceNumber);
                     break;
                 case OpCodes.Reconnect:
                     break;
@@ -109,6 +109,7 @@ namespace BrutelDiscord.Clients
                     await OnHelloMessageAsync((payload.Data as JObject).ToObject<GatewayHelloResume>());
                     break;
                 case OpCodes.HeartbeatAcknowledge:
+                    this._socketClient.LastHeartbeatAcknowledge = DateTime.Now;
                     break;
                 default:
                     break;
@@ -125,7 +126,7 @@ namespace BrutelDiscord.Clients
             this._socketClient.StartHeartbeatTimer(helloResume.HeartbeatInterval);
 
             GatewayIdentify gatewayIdentify = new GatewayIdentify();
-            _socketConfig = JsonStorage.GetToken();
+            _socketConfig = JsonStorage.GetConfig();
             gatewayIdentify.Token = _socketConfig.Token;
             await this._socketClient.SendAsync(OpCodes.Identity, gatewayIdentify);
         }
@@ -142,8 +143,8 @@ namespace BrutelDiscord.Clients
                     this._socketClient.Dispose();
                 }
 
-                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // TODO: set large fields to null.
+                // free unmanaged resources (unmanaged objects) and override a finalizer below.
+                // set large fields to null.
 
                 disposedValue = true;
             }

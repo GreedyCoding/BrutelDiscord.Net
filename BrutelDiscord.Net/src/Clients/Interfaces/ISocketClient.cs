@@ -17,6 +17,8 @@ namespace BrutelDiscord.Clients.Interfaces
         int? LastSequenceNumber { get; }
         bool IsConnected { get; }
         ClientWebSocket WebSocket { get; }
+        DateTime LastHeartbeatAcknowledge { get; set; }
+
 
         Task<bool> StartAsync(string uri, TimeSpan pollTime, System.Threading.CancellationToken token);
         Task StopAsync(WebSocketCloseStatus status, string statusDescription);

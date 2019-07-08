@@ -71,7 +71,7 @@ namespace BrutelDiscord.Storage.Implementations
         /// Gets the stored config file
         /// </summary>
         /// <returns></returns>
-        public static SocketConfig GetToken()
+        public static SocketConfig GetConfig()
         {
             string jsonString = File.ReadAllText(CONFIG_FOLDER + "/" + CONFIG_FILENAME);
             SocketConfig config = JsonConvert.DeserializeObject<SocketConfig>(jsonString);
