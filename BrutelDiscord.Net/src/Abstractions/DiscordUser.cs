@@ -18,7 +18,7 @@ namespace BrutelDiscord.Abstractions
         public string Username { get; internal set; }
 
         [JsonProperty("discriminator", NullValueHandling = NullValueHandling.Ignore)]
-        internal string Discriminator { get; set; }
+        public string Discriminator { get; set; }
 
         [JsonProperty("avatar", NullValueHandling = NullValueHandling.Ignore)]
         public string AvatarHash { get; internal set; }
@@ -40,5 +40,22 @@ namespace BrutelDiscord.Abstractions
 
         [JsonProperty("locale", NullValueHandling = NullValueHandling.Ignore)]
         public string Locale { get; internal set; }
+
+        //public static DiscordUser Clone(DiscordUser other)
+        //{
+        //    DiscordUser user = new DiscordUser();
+        //    user.Id = other.Id;
+        //    user.Username = other.Username;
+        //    user.Discriminator = other.Discriminator;
+        //    user.AvatarHash = other.AvatarHash;
+        //    user.IsBot = other.IsBot;
+        //    user.MfaEnabled = other.MfaEnabled;
+        //    user.Verified = other.Verified;
+        //    user.Email = other.Email;
+        //    user.PremiumType = other.PremiumType;
+        //    user.Locale = other.Locale;
+        //    return user;
+        //}
+
     }
 }
