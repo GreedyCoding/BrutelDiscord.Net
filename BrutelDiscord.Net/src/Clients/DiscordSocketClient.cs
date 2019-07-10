@@ -1,6 +1,11 @@
 ﻿using BrutelDiscord.Abstractions;
 using BrutelDiscord.Abstractions.Gateway;
+using BrutelDiscord.Abstractions.Gateway.Commands;
+using BrutelDiscord.Abstractions.Gateway.Events;
+using BrutelDiscord.Clients.Interfaces;
+using BrutelDiscord.Dto.EventArg;
 using BrutelDiscord.Enums;
+using BrutelDiscord.Storage.Implementations;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -11,10 +16,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
-using BrutelDiscord.Storage.Implementations;
 using NLog;
-using BrutelDiscord.Clients.Interfaces;
-using BrutelDiscord.Dto.EventArg;
+
 
 namespace BrutelDiscord.Clients
 {
@@ -106,7 +109,7 @@ namespace BrutelDiscord.Clients
                 case OpCodes.InvalidSession:
                     break;
                 case OpCodes.Hello:
-                    await OnHelloMessageAsync((payload.Data as JObject).ToObject<GatewayHelloResume>());
+                    await OnHelloMessageAsync((payload.Data as JObject).ToObject<GatewayHello>());
                     break;
                 case OpCodes.HeartbeatAcknowledge:
                     this._socketClient.LastHeartbeatAcknowledge = DateTime.Now;
@@ -120,7 +123,7 @@ namespace BrutelDiscord.Clients
         /// Method to handle the first message from the Discord websocket
         /// </summary>
         /// <param name="helloResume">Gateway payload sent from the websocket</param>
-        private async Task OnHelloMessageAsync(GatewayHelloResume helloResume)
+        private async Task OnHelloMessageAsync(GatewayHello helloResume)
         { 
 
             this._socketClient.StartHeartbeatTimer(helloResume.HeartbeatInterval);

@@ -186,7 +186,7 @@ namespace BrutelDiscord.Clients
         /// <returns></returns>
         private async Task CheckForHeartbeatAcknowledgeAsync(TimeSpan pollTime, CancellationToken token)
         {
-            await Task.Delay(pollTime);
+            await Task.Delay(pollTime * 3);
             while (!token.IsCancellationRequested && this.IsConnected)
             {
                 if (LastHeartbeatAcknowledge.AddMilliseconds(this._heartbeatInterval * 2) < DateTime.Now)

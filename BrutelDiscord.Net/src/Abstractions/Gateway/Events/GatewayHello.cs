@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace BrutelDiscord.Abstractions.Gateway
+namespace BrutelDiscord.Abstractions.Gateway.Events
 {
-    class GatewayHelloResume
+    class GatewayHello
     {
         [JsonProperty("heartbeat_interval")]
         public int HeartbeatInterval { get; set; }
