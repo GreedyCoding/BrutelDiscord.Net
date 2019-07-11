@@ -1,15 +1,15 @@
-﻿using BrutelDiscord.src.Enums;
+﻿using BrutelDiscord.Enums;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace BrutelDiscord.Abstractions
+namespace BrutelDiscord.Abstractions.Gateway
 {
     /// <summary>
     /// Represensts a Discord user
     /// </summary>
-    class DiscordUser
+    class GatewayUser
     {
         [JsonProperty("id")]
         public ulong Id { get; internal set; }
@@ -36,7 +36,7 @@ namespace BrutelDiscord.Abstractions
         public string Email { get; internal set; }
 
         [JsonProperty("premium_type", NullValueHandling = NullValueHandling.Ignore)]
-        public PremiumType? PremiumType { get; internal set; }
+        public PremiumTypes? PremiumType { get; internal set; }
 
         [JsonProperty("locale", NullValueHandling = NullValueHandling.Ignore)]
         public string Locale { get; internal set; }
