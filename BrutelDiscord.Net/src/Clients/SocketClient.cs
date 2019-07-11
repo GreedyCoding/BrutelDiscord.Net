@@ -84,13 +84,6 @@ namespace BrutelDiscord.Clients
             return result;
         }
 
-        private Task ResumeConnectionAsync()
-        {
-            //TODO Implement ResumeConnectionAsync
-            throw new NotImplementedException();
-        }
-
-
         /// <summary>
         /// Stopping connection to a websocket
         /// </summary>
@@ -100,7 +93,11 @@ namespace BrutelDiscord.Clients
             this._logger?.Debug($"Connection will be closed with this status {status.ToString()} and the following description: {statusDescription}");
             await this._webSocket.CloseAsync(status, statusDescription, this._cancellationTokenSource.Token);
         }
-
+        private Task ResumeConnectionAsync()
+        {
+            //TODO Implement ResumeConnectionAsync
+            throw new NotImplementedException();
+        }
 
         /// <summary>
         /// Sending payloads to the websocket
@@ -189,7 +186,7 @@ namespace BrutelDiscord.Clients
             await Task.Delay(pollTime * 3);
             while (!token.IsCancellationRequested && this.IsConnected)
             {
-                if (LastHeartbeatAcknowledge.AddMilliseconds(this._heartbeatInterval * 2) < DateTime.Now)
+                if (LastHeartbeatAcknowledge.AddMilliseconds(this._heartbeatInterval + pollTime.TotalMilliseconds) < DateTime.Now)
                 {
                     await StopAsync(WebSocketCloseStatus.PolicyViolation, "No heartbeat acknowledge was received in time");
                     await ResumeConnectionAsync();
