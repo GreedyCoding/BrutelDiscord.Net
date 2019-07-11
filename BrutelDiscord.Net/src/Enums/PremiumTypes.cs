@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace BrutelDiscord.src.Enums
+namespace BrutelDiscord.Enums
 {
-    public enum PremiumType
+    public enum PremiumTypes
     {
         NitroClassic = 1,
 
